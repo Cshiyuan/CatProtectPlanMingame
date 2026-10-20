@@ -1,91 +1,48 @@
 import { _decorator, Component, Node } from 'cc';
 import { GameBootstrap } from './systems/GameBootstrap';
-
+import { LiangshanBattle } from './shuihu/LiangshanBattle';
 const { ccclass, property } = _decorator;
 
 /**
- * 游戏主场景控制器
- * 负责启动游戏初始化流程
+ * Scene entry: enable Liangshan battle by default; disable the toggle
+ * to load the original CatProtectPlan game unchanged.
  */
 @ccclass('GameScene')
 export class GameScene extends Component {
-    
-    @property({ tooltip: "游戏启动器", type: GameBootstrap })
+    @property({ tooltip: '原版猫咪游戏启动器', type: GameBootstrap })
     public gameBootstrap: GameBootstrap | null = null;
-    
-    protected onLoad(): void {
-        console.log("=== 猫咪城堡防御游戏启动 ===");
 
-        // 如果没有指定GameBootstrap，自动创建
+    @property({ tooltip: '启动梁山保卫战垂直切片（关闭可回原版）' })
+    public useLiangshanBattle: boolean = true;
+
+    protected onLoad(): void {
+        if (this.useLiangshanBattle) {
+            const battleNode = new Node('LiangshanBattle');
+            battleNode.parent = this.node;
+            battleNode.addComponent(LiangshanBattle);
+            return;
+        }
         if (!this.gameBootstrap) {
-            this.createGameBootstrap();
+            const node = new Node('GameBootstrap');
+            node.parent = this.node;
+            this.gameBootstrap = node.addComponent(GameBootstrap);
         }
     }
 
     protected start(): void {
-        // 检查GameBootstrap状态
-        if (this.gameBootstrap) {
-            const initState = this.gameBootstrap.getInitializationState();
+        if (this.useLiangshanBattle) return;
+        const state = this.gameBootstrap?.getInitializationState();
+        if (state?.isFailed) console.error('[GameScene] 原版游戏初始化失败');
+    }
 
-            if (initState.isFailed) {
-                console.error("[GameScene] 游戏初始化失败，请检查控制台错误信息");
-            } else if (initState.isCompleted) {
-                this.onGameReady();
-            }
-        }
-    }
-    
-    // 创建GameBootstrap
-    private createGameBootstrap(): void {
-        const bootstrapNode = new Node("GameBootstrap");
-        bootstrapNode.parent = this.node;
-
-        this.gameBootstrap = bootstrapNode.addComponent(GameBootstrap);
-    }
-    
-    // 游戏系统准备完成
-    private onGameReady(): void {
-        console.log("🎮 游戏已准备就绪！");
-
-        // 显示游戏版本和信息
-        this.showGameInfo();
-    }
-    
-    // 显示游戏信息
-    private showGameInfo(): void {
-        console.log(`
-╔════════════════════════════════════════╗
-║           猫咪城堡防御游戏               ║
-║        Cat Protect Plan Mingame        ║
-╠════════════════════════════════════════╣
-║ 🏰 保护城堡                            ║
-║ 🐱 部署猫咪英雄                        ║
-║ ⚔️  击退老鼠入侵                       ║
-║ 💰 收集金币购买更多英雄                ║
-╠════════════════════════════════════════╣
-║ 开发版本: TypeScript + Cocos Creator  ║
-║ 架构模式: 参考老项目重构               ║
-╚════════════════════════════════════════╝
-        `);
-    }
-    
-    // 获取游戏状态信息
-    public getGameStatus(): {
-        isInitialized: boolean;
-        hasBootstrap: boolean;
-        initPhase: string;
-        canPlay: boolean;
-    } {
-        const hasBootstrap = !!this.gameBootstrap;
-        const initState = hasBootstrap ? this.gameBootstrap.getInitializationState() : null;
-        
+    public getGameStatus(): { isInitialized: boolean; hasBootstrap: boolean; initPhase: string; canPlay: boolean } {
+        if (this.useLiangshanBattle) return {isInitialized:true,hasBootstrap:false,initPhase:'liangshan',canPlay:true};
+        const state = this.gameBootstrap?.getInitializationState();
         return {
-            isInitialized: !!initState?.isCompleted,
-            hasBootstrap: hasBootstrap,
-            initPhase: initState?.phase || "none",
-            canPlay: !!initState?.isCompleted && !initState?.isFailed
+            isInitialized: !!state?.isCompleted,
+            hasBootstrap: !!this.gameBootstrap,
+            initPhase: state?.phase || 'none',
+            canPlay: !!state?.isCompleted && !state?.isFailed
         };
     }
-    
-    
 }
